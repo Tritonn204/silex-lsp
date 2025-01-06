@@ -1,5 +1,5 @@
 use xelis_lexer::{Lexer, LexerError};
-use xelis_ast::Token;
+use xelis_ast::{Token, Literal};
 use tower_lsp::lsp_types::{SemanticToken, SemanticTokens};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range, NumberOrString};
 
@@ -11,7 +11,7 @@ pub fn tokenize_document(content: &str, tab_size: u8) -> Result<SemanticTokens, 
     
     let mut semantic_tokens = Vec::new();
     let mut line = 1;
-    let mut start = 1;
+    let mut start = 0;
 
     let mut context = SemanticContext::new();
 
@@ -21,7 +21,7 @@ pub fn tokenize_document(content: &str, tab_size: u8) -> Result<SemanticTokens, 
 
         let delta_line = (token_result.line - line) as u32;
         let delta_start = if delta_line == 0 {
-            (token_result.column_start - start) as u32
+            (token_result.column_start - start - 1) as u32
         } else {
             token_result.column_start as u32 - 1
         };
@@ -37,7 +37,7 @@ pub fn tokenize_document(content: &str, tab_size: u8) -> Result<SemanticTokens, 
         semantic_tokens.push(st);
 
         line = token_result.line;
-        start = token_result.column_start;
+        start = token_result.column_start - 1;
     }
 
     Ok(SemanticTokens {
@@ -96,22 +96,27 @@ fn get_token_type(token: &Token, context: &mut SemanticContext) -> u32 {
         Token::Identifier(name) => {
             if context.in_function_params {
                 context.add_variable(name.to_string(), 6); // Parameter
-                6
+                7
             } else if context.in_struct_definition || context.in_enum_definition {
-                7 // Type
+                8 // Type
             } else {
                 context.get_variable_type(name).unwrap_or(2) // Variable or Function (assuming 2 is for variables)
             }
         },
-        Token::Number(_) => 4, // Number
-        Token::Value(_) => 3, // String or other literals
+        Token::Number(_) => 5, // Number
+        Token::Value(_) => {
+            match token {
+                Token::Value(Literal::String(_)) => 3, // String
+                _ => 4, // Literal
+            }
+        }, // String or other literals
         Token::OperatorAssign | Token::OperatorPlus | Token::OperatorMinus |
         Token::OperatorMultiply | Token::OperatorDivide | Token::OperatorModulo |
         Token::OperatorPow | Token::OperatorBitwiseXor | Token::OperatorBitwiseOr |
         Token::OperatorBitwiseAnd | Token::OperatorBitwiseShl | Token::OperatorBitwiseShr |
         Token::OperatorEquals | Token::OperatorNotEquals | Token::OperatorGreaterThan |
         Token::OperatorLessThan | Token::OperatorGreaterOrEqual | Token::OperatorLessOrEqual |
-        Token::OperatorAnd | Token::OperatorOr => 5, // Operator
-        _ => 8, // Other (you might want to adjust this)
+        Token::OperatorAnd | Token::OperatorOr => 6, // Operator
+        _ => 9, // Other (you might want to adjust this)
     }
 }

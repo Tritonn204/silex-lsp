@@ -45,6 +45,7 @@ impl LanguageServer for SilexLanguageServer {
                                     SemanticTokenType::FUNCTION,
                                     SemanticTokenType::VARIABLE,
                                     SemanticTokenType::STRING,
+                                    SemanticTokenType::new("literal"),
                                     SemanticTokenType::NUMBER,
                                     SemanticTokenType::OPERATOR,
                                     SemanticTokenType::COMMENT,
