@@ -6,10 +6,15 @@ edition = "2021"
 [dependencies]
 serde = "1.0.217"
 serde_json = "1.0.134"
-tokio = { version = "1.42", features = ["io-std", "full"] }
+tokio = { version = "1.42", features = ["full"] }
 tower-lsp = "0.20.0"
+env_logger = "0.11.6"
+
 xelis-lexer = { git = "https://github.com/Tritonn204/xelis-vm", branch = "dev" }
+xelis-parser = { git = "https://github.com/Tritonn204/xelis-vm", branch = "dev" }
+xelis-builder = { git = "https://github.com/Tritonn204/xelis-vm", branch = "dev" }
 xelis-ast = { git = "https://github.com/Tritonn204/xelis-vm", branch = "dev" }
+xelis-types = { git = "https://github.com/Tritonn204/xelis-vm", branch = "dev" }
 
 [lib]
 name = "silex_lsp"

@@ -2,18 +2,24 @@ use tower_lsp::{LspService, Server};
 use tokio::sync::Mutex;
 use std::collections::HashMap;
 
-mod lsp;
+use env_logger;
 
-use lsp::SilexLanguageServer;
+use silex_lsp::lsp::SilexLanguageServer;
 
 #[tokio::main]
 async fn main() {
-    let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
+  env_logger::Builder::new().target(env_logger::Target::Stderr).init();
+  std::panic::set_hook(Box::new(|info| {
+    eprintln!("Panic occurred: {:?}", info);
+  }));
 
-    let (service, socket) = LspService::new(|client| SilexLanguageServer { 
-      client, 
-      documents: Mutex::new(HashMap::new()), 
-      tab_size: 4.into(),
-    });
-    Server::new(stdin, stdout, socket).serve(service).await;
+  let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
+
+  let (service, socket) = LspService::new(|client| SilexLanguageServer { 
+    client, 
+    documents: Mutex::new(HashMap::new()), 
+    tab_size: 4.into(),
+    funcs: HashMap::new().into()
+  });
+  Server::new(stdin, stdout, socket).serve(service).await;
 }
