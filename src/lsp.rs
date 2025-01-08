@@ -51,10 +51,6 @@ impl LanguageServer for SilexLanguageServer {
       }
     }
 
-    self.client
-      .log_message(MessageType::INFO, format!("XSTD funcs: {:?}", funcs))
-      .await;
-
     // transmit lsp capabilities
     Ok(InitializeResult {
       capabilities: ServerCapabilities {
@@ -84,6 +80,7 @@ impl LanguageServer for SilexLanguageServer {
                   SemanticTokenType::NAMESPACE,             // 9
                   SemanticTokenType::PARAMETER,             // 10
                   SemanticTokenType::new("unknownId"),      // 11
+                  SemanticTokenType::new("varDeclItem")     // 12
                 ],
                 token_modifiers: vec![],
               },

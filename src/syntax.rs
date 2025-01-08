@@ -134,7 +134,6 @@ impl<'a> SemanticContext<'a> {
 }
 
 fn handle_token<'a>(token: &Token<'a>, context: &mut SemanticContext<'a>) {
-  
   match token {
     Token::Identifier(name) => {
       match context.prev_token {
@@ -203,13 +202,6 @@ fn handle_token<'a>(token: &Token<'a>, context: &mut SemanticContext<'a>) {
       context.exit_scope();
     },
 
-    // Token::Value(value) => {
-    //   match value {
-    //     Literal::String() => {},
-    //     _ => {}
-    //   }
-    // },
-
     _ => {}
   }
 }
@@ -219,7 +211,9 @@ fn get_token_type<'a>(token: &Token<'a>, context: &mut SemanticContext<'a>) -> u
     Token::Let | Token::Const | Token::Function | Token::Entry | 
     Token::Struct | Token::Enum | Token::For | Token::ForEach | 
     Token::While | Token::If | Token::Else | Token::Return | 
-    Token::Continue | Token::Break => 0, // Keyword
+    Token::Continue | Token::Break => 0, // Keyword,
+
+    Token::Let | Token::As | Token::In => 12, // Variable Declaration Accessory
 
     Token::Bool | Token::String | Token::Optional |
     Token::Map | Token::Blob => 8, // Type
