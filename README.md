@@ -1,2 +1,2 @@
 # silex-lsp
-A Silex compiler front-end for IDEs
+A Silex syntax background service for IDEs
