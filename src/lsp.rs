@@ -1,23 +1,16 @@
+use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 
 use tokio::sync::Mutex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicU8;
 
 use super::*;
 use crate::syntax::{tokenize_document};
 
-use xelis_ast::Signature;
 use xelis_types::{Constant, EnumType, OpaqueType, Opaque, StructType, Type};
-
-// Owned mirror of the Silex Function type for xstd registration
-#[derive(Debug)]
-pub struct FunctionData {
-  pub parameters: Vec<(String, Type)>,
-  pub return_type: Option<Type>
-}
 
 #[derive(Debug)]
 pub struct SilexLanguageServer {
@@ -26,7 +19,7 @@ pub struct SilexLanguageServer {
   pub tab_size: AtomicU8,
 
   //
-  pub funcs: Mutex<HashMap<Option<Type>, HashMap<(String, Vec<String>), FunctionData>>>,
+  pub funcs: RwLock<HashMap<Option<Type>, HashMap<String, HashSet<usize>>>>,
 }
 
 #[tower_lsp::async_trait]
@@ -34,20 +27,20 @@ impl LanguageServer for SilexLanguageServer {
   async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
 
     // register xstd functions in the server
-    let mut funcs = self.funcs.lock().await;
+    let mut funcs = self.funcs.write().await;
     let env = EnvironmentBuilder::default();
     for fdata in env.get_functions_mapper().get_declared_functions() {
       let ty_funcs = funcs.entry(fdata.0.cloned()).or_insert(HashMap::new());
       for function in fdata.1 {
-        let key = (function.name.to_string(), function.namespace.iter().map(|s| s.to_string()).collect());
+        let ns = function.namespace.clone();
+        let full_name = if ns.is_empty() || (*ns.last().unwrap() == "") {
+          function.name.to_string()
+        } else {
+          ns.join("::") + "::" + function.name
+        };
 
-        ty_funcs
-          .insert(key, FunctionData {
-            parameters: function.parameters.iter()
-              .map(|(name, ty)| (name.to_string(), ty.clone()))
-              .collect(),
-            return_type: function.return_type.clone(),
-          });
+        let mut sig_variants = ty_funcs.entry(full_name).or_insert(HashSet::new());
+        sig_variants.insert(function.parameters.len());
       }
     }
 
@@ -80,7 +73,9 @@ impl LanguageServer for SilexLanguageServer {
                   SemanticTokenType::NAMESPACE,             // 9
                   SemanticTokenType::PARAMETER,             // 10
                   SemanticTokenType::new("unknownId"),      // 11
-                  SemanticTokenType::new("varDeclItem")     // 12
+                  SemanticTokenType::new("varDeclItem"),    // 12
+                  SemanticTokenType::STRUCT,                // 13
+                  SemanticTokenType::ENUM,                  // 14
                 ],
                 token_modifiers: vec![],
               },
@@ -135,7 +130,8 @@ impl LanguageServer for SilexLanguageServer {
     let documents = self.documents.lock().await;
 
     if let Some(content) = documents.get(&uri) {
-      match tokenize_document(content) {
+      let funcs_snapshot = self.funcs.read().await;
+      match tokenize_document(content, &*funcs_snapshot) {
         Ok((tokens, diagnostics)) => {
           self.client.publish_diagnostics(uri.clone(), diagnostics, None).await;
 
